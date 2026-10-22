@@ -72,14 +72,30 @@ publicar de novo `publicado/almanaque.html` passando esse URL.
 - O link do claude.ai não pode ser embutido em outros sites (CSP `frame-ancestors 'self'`). Solução escolhida pelo
   usuário: repositório público `almanaque-lsb` no GitHub + GitHub Pages; o WordPress (outro site, o usuário é
   administrador) mostra o almanaque num iframe.
-- `.github/workflows/atualizar.yml`: toda terça 11h UTC (8h Brasília) + "Run workflow" manual. Coleta com o secret
+- Mudanças de interface/layout: o usuário pede aqui; editar `Almanaque LSB.html`, prévia, commit e `git push`.
+  O push em `Almanaque LSB.html`, `publicar.py`, `lsb_api.py`, logos ou no workflow dispara a publicação na hora.
+  Nunca dar push enquanto uma execução do Actions estiver rodando (o commit dela no fim entraria em conflito):
+  confira com `gh run list --limit 1` e faça `git pull --rebase` antes do push.
+- `.github/workflows/atualizar.yml`: toda terça 11h UTC (8h Brasília) + "Run workflow" manual + push (acima). Coleta com o secret
   `GENIUS_API_KEY`, guarda `cache_api` no cache do Actions, `publicar.py --site _site`, faz commit de
   `competicoes_api.csv` e `ultima-atualizacao.txt` (mantém o agendamento ativo) e publica no Pages.
 - `wordpress/codigo-para-wordpress.html`: iframe + script que ajusta a altura (mensagem `almanaqueLSB` com `altura`
   e `topo`, enviada pelo almanaque quando está dentro de um iframe). `?tema=claro|escuro` fixa o tema.
 - `.gitignore` deixa de fora chave, cache, dados gerados e arquivos locais.
-- Status: arquivos prontos e testados localmente (simulação com dois servidores); falta criar a conta/repositório
-  no GitHub, enviar, configurar o secret e ativar o Pages.
+- Repositório: https://github.com/guilhermesimoes29-afk/almanaque-lsb (público, criado em 22/10/2026 com
+  autorização explícita do usuário). Site: https://guilhermesimoes29-afk.github.io/almanaque-lsb/
+  Secret `GENIUS_API_KEY` cadastrado; Pages com build_type=workflow. Git e GitHub CLI (`gh`, logado como
+  guilhermesimoes29-afk) instalados. A pasta do projeto é o próprio repositório: depois de mudar algo,
+  `git pull` (a rotina faz commits semanais), commit e `git push`.
+
+## PENDENTE (22/10/2026)
+
+- Primeira execução do Actions (run 39842982023, disparada 19:46 UTC) ainda rodando a coleta; limite de 2 h.
+  Conferir com `gh run list --limit 1`. Se falhar, ver `gh run view 39842982023 --log-failed`.
+- Depois que ela terminar: `git pull --rebase`, commit e push das mudanças locais ainda não enviadas
+  (código do WordPress com o usuário guilhermesimoes29-afk e gatilho `push` no workflow). Esse push dispara
+  nova execução (rápida, com cache). Conferir que https://guilhermesimoes29-afk.github.io/almanaque-lsb/ abre
+  e avisar o usuário que o WordPress já pode publicar a página. Depois apagar esta seção.
 
 ## Próximos passos
 

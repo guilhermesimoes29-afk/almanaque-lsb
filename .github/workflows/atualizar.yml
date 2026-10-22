@@ -1,11 +1,20 @@
 # Atualização semanal do Almanaque LSB: coleta na Genius Sports e publica no GitHub Pages
-# (o site que aparece na página do WordPress). Também pode ser rodada à mão em Actions > "Run workflow".
+# (o site que aparece na página do WordPress). Também roda quando o almanaque ou o programa mudam,
+# e pode ser rodada à mão em Actions > "Run workflow".
 name: Atualizar almanaque
 
 on:
   schedule:
     - cron: "0 11 * * 2"   # toda terça às 8h de Brasília (11h UTC); o GitHub pode atrasar alguns minutos
   workflow_dispatch:
+  push:                    # mudança no visual ou no programa: publica na hora
+    branches: [main]
+    paths:
+      - "Almanaque LSB.html"
+      - "publicar.py"
+      - "lsb_api.py"
+      - "logo_lsb*.png"
+      - ".github/workflows/atualizar.yml"
 
 permissions:
   contents: write
@@ -19,7 +28,7 @@ concurrency:
 jobs:
   atualizar:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180   # a primeira coleta, sem cache, faz cerca de 1.000 consultas
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}

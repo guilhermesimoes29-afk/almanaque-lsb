@@ -71,8 +71,13 @@ def ler_chave():
     arq = os.path.join(PASTA, "chave_api.txt")
     if not k and os.path.exists(arq):
         k = open(arq, encoding="utf-8").read().strip()
+    k = k.replace("﻿", "").strip()   # marca de codificação (BOM) e espaços que editores e o PowerShell acrescentam
     if not k:
         print("Chave não encontrada. Crie o arquivo chave_api.txt com a chave da Genius.")
+        sys.exit(1)
+    if not re.fullmatch(r"[A-Za-z0-9_\-]+", k):
+        print("A chave tem caracteres inesperados (só letras e números são válidos). Confira chave_api.txt "
+              "ou o secret GENIUS_API_KEY no GitHub.")
         sys.exit(1)
     return k
 
@@ -271,7 +276,7 @@ def cmd_competicoes(api, args):
     liga = args.liga or TESTE["liga"]
     comps = api.lista(caminho("competicoes", liga=liga), ttl=0)
     if comps is None:
-        print("Não consegui listar as competições. Rode primeiro:  py lsb_api.py testar"); return
+        print("Não consegui listar as competições. Rode primeiro:  py lsb_api.py testar"); sys.exit(1)
     linhas = []
     for c in comps:
         cid = pega(c, "competitionId", "id")
