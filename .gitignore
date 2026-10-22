@@ -1,0 +1,17 @@
+# Segredos: a chave fica só no computador e no "Secret" GENIUS_API_KEY do GitHub
+chave_api*.txt
+
+# Gerados pela coleta e pelo publicar.py
+cache_api/
+amostras/
+lsb_dados*.json
+publicado/
+_site/
+Almanaque LSB - com dados.html
+*.log
+__pycache__/
+
+# Arquivos só locais
+versoes/
+competicoes_api_teste.csv
+logo_lsb_original.png

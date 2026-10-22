@@ -1,0 +1,9 @@
+{
+ "competicoes": "leagues/{liga}/competitions",
+ "jogos": "competitions/{comp}/matches",
+ "jogo": "matches/{jogo}",
+ "pessoas": "leagues/{liga}/persons",
+ "stats_comp": "statistics/personmatch/competitions/{comp}",
+ "stats_jogo": "statistics/personmatch/matches/{jogo}",
+ "time_jogo": "statistics/teammatch/matches/{jogo}"
+}

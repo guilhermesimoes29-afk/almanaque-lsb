@@ -1,0 +1,27 @@
+<!--
+  Almanaque LSB no WordPress
+  Cole este código inteiro num bloco "HTML personalizado" da página.
+  Troque USUARIO (no endereço src abaixo) pelo seu nome de usuário do GitHub.
+  A altura se ajusta sozinha ao conteúdo. Para o tema escuro, troque ?tema=claro por ?tema=escuro.
+-->
+<iframe id="almanaque-lsb"
+  src="https://USUARIO.github.io/almanaque-lsb/?tema=claro"
+  title="Almanaque LSB – estatísticas históricas da Liga Super Basketball"
+  style="display:block;width:100%;height:1400px;border:0"
+  loading="lazy"></iframe>
+<script>
+(function () {
+  var quadro = document.getElementById('almanaque-lsb');
+  var origem = new URL(quadro.src).origin;
+  window.addEventListener('message', function (e) {
+    if (e.origin !== origem || !e.data || !e.data.almanaqueLSB) return;
+    var d = e.data.almanaqueLSB;
+    if (d.altura) quadro.style.height = d.altura + 'px';
+    if (d.topo) {
+      // Ao trocar de aba, volta para o topo do almanaque se a pessoa estiver mais abaixo
+      var y = quadro.getBoundingClientRect().top + window.pageYOffset - 90;
+      if (window.pageYOffset > y) window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  });
+})();
+</script>

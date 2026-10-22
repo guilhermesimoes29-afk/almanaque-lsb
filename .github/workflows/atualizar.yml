@@ -1,0 +1,77 @@
+# Atualização semanal do Almanaque LSB: coleta na Genius Sports e publica no GitHub Pages
+# (o site que aparece na página do WordPress). Também pode ser rodada à mão em Actions > "Run workflow".
+name: Atualizar almanaque
+
+on:
+  schedule:
+    - cron: "0 11 * * 2"   # toda terça às 8h de Brasília (11h UTC); o GitHub pode atrasar alguns minutos
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: almanaque
+  cancel-in-progress: false
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install requests
+
+      # Respostas já baixadas (temporadas antigas não são pedidas de novo à API)
+      - uses: actions/cache/restore@v4
+        with:
+          path: cache_api
+          key: cache-api-${{ github.run_id }}
+          restore-keys: cache-api-
+
+      - name: Coletar dados da Genius
+        env:
+          GENIUS_API_KEY: ${{ secrets.GENIUS_API_KEY }}
+          PYTHONIOENCODING: utf-8
+        run: |
+          python lsb_api.py competicoes --producao --liga 256
+          python lsb_api.py coletar --producao --liga 256
+
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: cache_api
+          key: cache-api-${{ github.run_id }}
+
+      - name: Gerar o site
+        env:
+          PYTHONIOENCODING: utf-8
+        run: python publicar.py --site _site
+
+      # Guarda competições novas no CSV e registra a data. O commit semanal também mantém
+      # a rotina ativa (o GitHub desliga agendamentos de repositórios parados há 60 dias).
+      - name: Registrar atualização
+        run: |
+          date -u +"%Y-%m-%d %H:%M UTC" > ultima-atualizacao.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add competicoes_api.csv ultima-atualizacao.txt
+          git commit -m "Atualização semanal dos dados" || echo "Nada a registrar"
+          git push
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deploy
+        uses: actions/deploy-pages@v4
