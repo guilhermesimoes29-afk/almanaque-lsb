@@ -88,14 +88,13 @@ publicar de novo `publicado/almanaque.html` passando esse URL.
   guilhermesimoes29-afk) instalados. A pasta do projeto é o próprio repositório: depois de mudar algo,
   `git pull` (a rotina faz commits semanais), commit e `git push`.
 
-## PENDENTE (22/10/2026)
+## Histórico do GitHub Actions
 
-- Primeira execução do Actions (run 39842982023, disparada 19:46 UTC) ainda rodando a coleta; limite de 2 h.
-  Conferir com `gh run list --limit 1`. Se falhar, ver `gh run view 39842982023 --log-failed`.
-- Depois que ela terminar: `git pull --rebase`, commit e push das mudanças locais ainda não enviadas
-  (código do WordPress com o usuário guilhermesimoes29-afk e gatilho `push` no workflow). Esse push dispara
-  nova execução (rápida, com cache). Conferir que https://guilhermesimoes29-afk.github.io/almanaque-lsb/ abre
-  e avisar o usuário que o WordPress já pode publicar a página. Depois apagar esta seção.
+- 22/10/2026: 1ª execução cancelada após 2 h — o secret tinha BOM (cadastrado via pipe do PowerShell 5.1) e toda
+  requisição dava UnicodeEncodeError. Corrigido: secret recadastrado com `gh secret set --body`, `ler_chave()`
+  remove BOM e recusa chave com caracteres estranhos, `competicoes` sai com erro se a API não responde.
+  Nunca cadastrar secret com pipe no PowerShell.
+- 22/10/2026: 2ª execução OK em 19,5 min (1.003 chamadas, 5.895 jogos); site no ar (9 MB, ~3,6 s).
 
 ## Próximos passos
 
