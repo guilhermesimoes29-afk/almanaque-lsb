@@ -250,7 +250,8 @@ const STATS=[
  {k:'oreb',n:'Rebotes ofensivos',s:'RO'},{k:'dreb',n:'Rebotes defensivos',s:'RD'},
  {k:'eff',n:'Eficiência',s:'EF'},{k:'min',n:'Minutos',s:'MIN'},{k:'pm',n:'Saldo +/-',s:'+/-'},
  {k:'tov',n:'Erros (desperdícios de bola)',s:'ERR'},{k:'pf',n:'Faltas cometidas',s:'FC'},
- {k:'dd',n:'Duplos-duplos',s:'DD',onlyCount:true},{k:'td',n:'Triplos-duplos',s:'TD',onlyCount:true}
+ {k:'dd',n:'Duplos-duplos',s:'DD',onlyCount:true},{k:'td',n:'Triplos-duplos',s:'TD',onlyCount:true},
+ {k:'qd',n:'Quádruplos-duplos',s:'QD',onlyCount:true}
 ];
 const PCTS=[
  {k:'fgp',n:'% arremessos de quadra',s:'AR%',m:'fgm',a:'fga',min:30},
@@ -321,7 +322,7 @@ function buildIndex(db){
     if(!L.reb&&(L.oreb||L.dreb))L.reb=L.oreb+L.dreb;
     L.eff=L.pts+L.reb+L.ast+L.stl+L.blk-(L.fga-L.fgm)-(L.fta-L.ftm)-L.tov;
     const tens=[L.pts,L.reb,L.ast,L.stl,L.blk].filter(v=>v>=10).length;
-    L.dd=tens>=2?1:0;L.td=tens>=3?1:0;
+    L.dd=tens>=2?1:0;L.td=tens>=3?1:0;L.qd=tens>=4?1:0;
     const pid=ix.jogadorId!=null?r[ix.jogadorId]:null;
     L.pk=pid?'id:'+pid:'n:'+norm(L.name);
     L.cat=g.cat;L.temp=g.temp;
@@ -356,9 +357,9 @@ function aggregate(lines,keyFn){
   for(const L of lines){
     if(!L.played)continue;
     const k=keyFn(L);let a=m.get(k);
-    if(!a){a={k,pk:L.pk,g:0,w:0,dd:0,td:0,teams:new Set(),cats:new Set(),temps:new Set(),cat:L.cat,temp:L.temp,g1:L.game};
+    if(!a){a={k,pk:L.pk,g:0,w:0,dd:0,td:0,qd:0,teams:new Set(),cats:new Set(),temps:new Set(),cat:L.cat,temp:L.temp,g1:L.game};
       for(const s of NUMS)a[s]=0;m.set(k,a);}
-    a.g++;if(L.won)a.w++;a.dd+=L.dd;a.td+=L.td;
+    a.g++;if(L.won)a.w++;a.dd+=L.dd;a.td+=L.td;a.qd+=L.qd;
     for(const s of NUMS)a[s]+=L[s];
     a.teams.add(L.team);a.cats.add(L.cat);if(L.temp)a.temps.add(L.temp);
   }
