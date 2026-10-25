@@ -240,6 +240,7 @@ footer.foot{font-size:12px;color:var(--muted);padding-block:0 28px}
 /* ===== Núcleo de dados (sem DOM) ===== */
 const NUMS=['min','pts','fgm','fga','p2m','p2a','p3m','p3a','ftm','fta','oreb','dreb','reb','ast','stl','blk','tov','pf','eff','pm'];
 const STATS=[
+ {k:'g',n:'Jogos',s:'J',onlyCount:true},
  {k:'pts',n:'Pontos',s:'PTS'},{k:'reb',n:'Rebotes',s:'REB'},{k:'ast',n:'Assistências',s:'AST'},
  {k:'stl',n:'Recuperações de bola',s:'REC',c:'Recuperações'},{k:'blk',n:'Tocos',s:'TOC'},
  {k:'p3m',n:'Bolas de 3 convertidas',s:'3PC',c:'Bolas de 3'},{k:'p3a',n:'Bolas de 3 tentadas',s:'3PT'},
@@ -372,7 +373,7 @@ function statValue(a,k,mode){
 }
 
 function rankPlayers(lines,o){
-  const keyFn=o.scope==='temporada'?L=>L.pk+'|'+L.cat+'|'+L.temp:o.scope==='comp'?L=>L.pk+'|'+L.game.comp:L=>L.pk;
+  const keyFn=o.scope==='temporada'?L=>L.pk+'|'+L.cat+'|'+L.temp:o.scope==='categoria'?L=>L.pk+'|'+L.cat:o.scope==='comp'?L=>L.pk+'|'+L.game.comp:L=>L.pk;
   let rows=aggregate(lines,keyFn).filter(a=>a.g>=(o.minG||1));
   const p=PCTS.find(x=>x.k===o.stat);
   if(p)rows=rows.filter(a=>a[p.a]>=(o.minA||p.min));
@@ -413,7 +414,7 @@ function gameRecords(games,k,n){
 }
 
 function teamTable(games,lines,scope){
-  const key=(t,g)=>scope==='temporada'?norm(t)+'|'+g.cat+'|'+g.temp:norm(t);
+  const key=(t,g)=>scope==='temporada'?norm(t)+'|'+g.cat+'|'+g.temp:scope==='categoria'?norm(t)+'|'+g.cat:norm(t);
   const m=new Map();
   const get=(t,g)=>{const k=key(t,g);let a=m.get(k);
     if(!a){a={k,name:t,cat:g.cat,temp:g.temp,j:0,v:0,d:0,pf:0,ps:0,best:null,cats:new Set(),temps:new Set(),reb:0,ast:0,stl:0,blk:0,p3m:0,tov:0};m.set(k,a);}
@@ -557,28 +558,28 @@ function vResumo(){
 }
 
 function vRankings(){
-  const o=S.rank,isP=!!PCTS.find(p=>p.k===o.stat);
+  const o=S.rank,isP=!!PCTS.find(p=>p.k===o.stat),isGames=o.stat==='g';
   let rows=rankPlayers(FL,o);
   if(o.q){const q=norm(o.q);rows=rows.filter(a=>norm(pname(a.pk)).includes(q)||[...a.teams].some(t=>norm(t).includes(q)));}
-  const dec=isP||o.mode==='media'?1:0;
+  const dec=isP||(!STAT[o.stat].onlyCount&&o.mode==='media')?1:0;
   const cols=['pts','reb','ast','stl','blk','p3m','eff'];
   const cell=(a,k)=>{const v=statValue(a,k,isP?'total':o.mode);return `<td class="opt">${fmt(v,o.mode==='media'&&!STAT[k].onlyCount?1:0)}</td>`;};
-  const scopeCol=o.scope==='temporada'?'<th class="l opt">Temporada</th>':o.scope==='comp'?'<th class="l opt">Competição</th>':'<th class="l opt">Categorias</th>';
-  const scopeTd=a=>o.scope==='temporada'?`<td class="l opt">${esc(a.cat)} ${a.temp||''}</td>`:o.scope==='comp'?`<td class="l opt">${esc(a.g1.compNome||a.cat+' '+(a.temp||''))}</td>`:`<td class="l opt">${esc([...a.cats].slice(0,3).join(', '))}${a.cats.size>3?` +${a.cats.size-3}`:''}</td>`;
+  const scopeCol=o.scope==='temporada'?'<th class="l opt">Temporada</th>':o.scope==='categoria'?'<th class="l opt">Categoria</th>':o.scope==='comp'?'<th class="l opt">Competição</th>':'<th class="l opt">Categorias</th>';
+  const scopeTd=a=>o.scope==='temporada'?`<td class="l opt">${esc(a.cat)} ${a.temp||''}</td>`:o.scope==='categoria'?`<td class="l opt">${esc(a.cat)}</td>`:o.scope==='comp'?`<td class="l opt">${esc(a.g1.compNome||a.cat+' '+(a.temp||''))}</td>`:`<td class="l opt">${esc([...a.cats].slice(0,3).join(', '))}${a.cats.size>3?` +${a.cats.size-3}`:''}</td>`;
   const pctCols=isP?`<th>Conv.</th><th>Tent.</th>`:'';
   const pctTd=a=>{const p=STAT[o.stat];return isP?`<td>${fmt(a[p.m])}</td><td>${fmt(a[p.a])}</td>`:''};
   const body=rows.slice(0,o.limit).map(a=>`<tr><td class="pos">${a.pos}</td><td class="l">${plBtn(a.pk,`<span class="sub2">${esc(teamsTxt(a))}</span>`)}</td>${scopeTd(a)}
-     <td>${a.g}</td><td class="on big">${fmt(a.v,dec)}${isP?'%':''}</td>${pctTd(a)}${cols.filter(k=>k!==o.stat).map(k=>cell(a,k)).join('')}</tr>`).join('');
+     <td class="${isGames?'on big':''}">${a.g}</td>${isGames?'':`<td class="on big">${fmt(a.v,dec)}${isP?'%':''}</td>`}${pctTd(a)}${cols.filter(k=>k!==o.stat).map(k=>cell(a,k)).join('')}</tr>`).join('');
   return `<div class="controls">
     <label>Estatística<select data-bind="rank.stat">${statOptions(o.stat)}</select></label>
-    <label>Como contar ${seg('rank.mode',o.mode,[['total','Total'],['media','Média por jogo']])}</label>
-    <label>Período ${seg('rank.scope',o.scope,[['carreira','Toda a história'],['temporada','Uma temporada'],['comp','Uma competição']])}</label>
+    ${isGames?'':`<label>Como contar ${seg('rank.mode',o.mode,[['total','Total'],['media','Média por jogo']])}</label>`}
+    <label>Período ${seg('rank.scope',o.scope,[['carreira','Toda a história'],['temporada','Uma temporada'],['categoria','Uma categoria'],['comp','Uma competição']])}</label>
     <label>Mín. de jogos<input type="number" min="1" value="${o.minG}" data-bind="rank.minG"></label>
     ${isP?`<label>Mín. de tentativas<input type="number" min="1" value="${o.minA||STAT[o.stat].min}" data-bind="rank.minA"></label>`:''}
     <label>Nome ou equipe<input type="search" value="${esc(o.q)}" data-bind="rank.q" placeholder="ex.: Tijuca"></label>
   </div>
-  <p class="note">${rows.length?fmt(rows.length)+' jogadores no ranking · '+esc(filtroTxt())+'. ':''}Clique no nome para ver o perfil.</p>
-  ${rows.length?`<div class="tbl-wrap"><table><thead><tr><th>#</th><th class="l">Jogador</th>${scopeCol}<th>J</th><th class="on">${esc(STAT[o.stat].s)}${o.mode==='media'&&!isP&&!STAT[o.stat].onlyCount?'/J':''}</th>${pctCols}
+  <p class="note">${rows.length?fmt(rows.length)+' jogadores no ranking · '+esc(filtroTxt())+'. ':''}Clique em Jogos (J) para ordenar; clique no nome para ver o perfil.</p>
+  ${rows.length?`<div class="tbl-wrap"><table><thead><tr><th>#</th><th class="l">Jogador</th>${scopeCol}<th class="sortable ${isGames?'on':''}" data-set="rank.stat" data-val="g">Jogos</th>${isGames?'':`<th class="on">${esc(STAT[o.stat].s)}${o.mode==='media'&&!isP&&!STAT[o.stat].onlyCount?'/J':''}</th>`}${pctCols}
     ${cols.filter(k=>k!==o.stat).map(k=>`<th class="sortable opt" data-set="rank.stat" data-val="${k}">${STAT[k].s}${o.mode==='media'&&!isP?'/J':''}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>
     ${rows.length>o.limit?`<button class="btn more" data-more="rank">Mostrar mais 100</button>`:''}`:'<p>Nenhum jogador atende a esse filtro.</p>'}`;
 }
@@ -620,7 +621,7 @@ function vJogos(){
    <div class="tbl-wrap"><table><thead><tr><th>#</th><th class="l">Mandante</th><th></th><th></th><th class="l">Visitante</th><th class="opt">Soma</th><th class="opt">Dif.</th><th class="l opt">Categoria</th><th class="opt">Data</th></tr></thead><tbody>${list.map(gameRow).join('')}</tbody></table></div>`;
 }
 
-const EQ_COLS=[['j','J'],['v','V'],['d','D'],['pct','%V'],['ppj','Pts/J'],['psj','Sofr./J'],['saldo','Saldo/J'],['rebj','Reb/J'],['astj','Ast/J'],['stlj','Rec/J'],['blkj','Toc/J'],['p3j','3PC/J'],['pf','Pts total']];
+const EQ_COLS=[['j','Jogos'],['v','V'],['d','D'],['pct','%V'],['ppj','Pts/J'],['psj','Sofr./J'],['saldo','Saldo/J'],['rebj','Reb/J'],['astj','Ast/J'],['stlj','Rec/J'],['blkj','Toc/J'],['p3j','3PC/J'],['pf','Pts total']];
 const EQ_MOBILE=['j','v','pct'];
 function vEquipes(){
   const o=S.eq;let rows=teamTable(FG,FL,o.scope);
@@ -628,11 +629,11 @@ function vEquipes(){
   rows.sort((x,y)=>y[o.sort]-x[o.sort]||y.v-x.v);
   const dec=k=>['j','v','d','pf'].includes(k)?0:1;
   const cls=k=>(k===o.sort?'on':'')+(EQ_MOBILE.includes(k)||k===o.sort?'':' opt');
-  return `<div class="controls"><label>Agrupar ${seg('eq.scope',o.scope,[['geral','Toda a história'],['temporada','Por temporada']])}</label></div>
-   <p class="note">Equipes com o mesmo nome são somadas. Clique no título de uma coluna para ordenar.</p>
-   <div class="tbl-wrap"><table><thead><tr><th>#</th><th class="l">Equipe</th><th class="l opt">${o.scope==='temporada'?'Temporada':'Categorias'}</th>
+  return `<div class="controls"><label>Agrupar ${seg('eq.scope',o.scope,[['geral','Toda a história'],['temporada','Por temporada'],['categoria','Por categoria']])}</label></div>
+   <p class="note">Equipes com o mesmo nome são somadas. Clique em Jogos para ordenar pelo total de partidas.</p>
+   <div class="tbl-wrap"><table><thead><tr><th>#</th><th class="l">Equipe</th><th class="l opt">${o.scope==='temporada'?'Temporada':o.scope==='categoria'?'Categoria':'Categorias'}</th>
    ${EQ_COLS.map(([k,n])=>`<th class="sortable ${cls(k)}" data-set="eq.sort" data-val="${k}">${n}</th>`).join('')}<th class="l opt">Maior vitória</th></tr></thead>
-   <tbody>${rows.slice(0,o.limit).map((a,i)=>`<tr><td class="pos">${i+1}</td><td class="l"><b>${esc(a.name)}</b></td><td class="l opt">${o.scope==='temporada'?esc(a.cat)+' '+(a.temp||''):esc([...a.cats].slice(0,3).join(', '))+(a.cats.size>3?` +${a.cats.size-3}`:'')}</td>
+   <tbody>${rows.slice(0,o.limit).map((a,i)=>`<tr><td class="pos">${i+1}</td><td class="l"><b>${esc(a.name)}</b></td><td class="l opt">${o.scope==='temporada'?esc(a.cat)+' '+(a.temp||''):o.scope==='categoria'?esc(a.cat):esc([...a.cats].slice(0,3).join(', '))+(o.scope!=='categoria'&&a.cats.size>3?` +${a.cats.size-3}`:'')}</td>
    ${EQ_COLS.map(([k])=>`<td class="${cls(k)}">${fmt(a[k],dec(k))}${k==='pct'?'%':''}</td>`).join('')}
    <td class="l opt">${a.best?`+${a.best.d} <span class="sub2">${esc(a.best.g.casa)} ${a.best.g.pc}–${a.best.g.pf} ${esc(a.best.g.fora)}</span>`:'–'}</td></tr>`).join('')}</tbody></table></div>
    ${rows.length>o.limit?'<button class="btn more" data-more="eq">Mostrar mais 100</button>':''}`;
