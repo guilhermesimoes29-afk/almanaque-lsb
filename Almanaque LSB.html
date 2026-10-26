@@ -693,12 +693,13 @@ function vComparar(){
 
 function vComps(){
   const resumo=new Map();
-  for(const g of S.I.games.values()){
+  for(const g of FG){
     let a=resumo.get(g.comp);
     if(!a){a={jogos:0,ano:null};resumo.set(g.comp,a);}
     a.jogos++;if(!a.ano&&g.temp)a.ano=g.temp;
   }
-  const list=[...S.I.comps.values()].map(c=>({nome:c.nome,ano:c.temporada||resumo.get(c.id)?.ano,jogos:resumo.get(c.id)?.jogos||0}))
+  const list=[...S.I.comps.values()].filter(c=>resumo.has(c.id))
+    .map(c=>({nome:c.nome,ano:c.temporada||resumo.get(c.id).ano,jogos:resumo.get(c.id).jogos}))
     .sort((a,b)=>(b.ano||0)-(a.ano||0)||(a.nome||'').localeCompare(b.nome||'','pt-BR'));
   return `<div class="tbl-wrap"><table><thead><tr><th class="l">Competição</th><th>Ano</th><th>Jogos</th></tr></thead><tbody>
    ${list.map(c=>`<tr><td class="l">${esc(c.nome||'–')}</td><td>${fmt(c.ano)}</td><td>${fmt(c.jogos)}</td></tr>`).join('')}</tbody></table></div>`;
