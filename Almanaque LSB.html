@@ -708,8 +708,9 @@ function setPath(path,val){const [a,b]=path.split('.');const cur=S[a][b];
   S[a][b]=typeof cur==='number'?(+val||0):val;if(a==='rank'&&b==='stat')S.rank.minA=0;if(S[a].limit)S[a].limit=a==='rec'?50:100;}
 /* Dentro de um iframe (página do WordPress): avisa a altura para a página de fora se ajustar */
 const EM_SITE=window.parent!==window;
-function avisarSite(extra){if(EM_SITE)try{parent.postMessage({almanaqueLSB:{altura:document.documentElement.scrollHeight,...extra}},'*');}catch(e){}}
+function avisarSite(extra){if(EM_SITE)try{parent.postMessage({almanaqueLSB:{altura:Math.max(document.documentElement.scrollHeight,document.body.scrollHeight),...extra}},'*');}catch(e){}}
 if(EM_SITE&&window.ResizeObserver)new ResizeObserver(()=>avisarSite()).observe(document.body);
+if(EM_SITE)window.addEventListener('message',e=>{if(e.data&&e.data.almanaqueLSB&&e.data.almanaqueLSB.solicitarAltura)avisarSite();});
 function go(tab){S.tab=tab;try{history.replaceState(null,'','#'+tab);}catch(e){}renderFrame();
   const nb=$('#navbar');if(nb&&window.scrollY>nb.offsetTop)window.scrollTo({top:nb.offsetTop});
   avisarSite({topo:true});}

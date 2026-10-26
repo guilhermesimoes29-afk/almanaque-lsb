@@ -13,14 +13,20 @@
   var quadro = document.getElementById('almanaque-lsb');
   var origem = new URL(quadro.src).origin;
   window.addEventListener('message', function (e) {
-    if (e.origin !== origem || !e.data || !e.data.almanaqueLSB) return;
+    if (e.origin !== origem || e.source !== quadro.contentWindow || !e.data || !e.data.almanaqueLSB) return;
     var d = e.data.almanaqueLSB;
-    if (d.altura) quadro.style.height = d.altura + 'px';
+    if (Number.isFinite(d.altura) && d.altura > 0) quadro.style.height = d.altura + 'px';
     if (d.topo) {
       // Ao trocar de aba, volta para o topo do almanaque se a pessoa estiver mais abaixo
       var y = quadro.getBoundingClientRect().top + window.pageYOffset - 90;
       if (window.pageYOffset > y) window.scrollTo({ top: y, behavior: 'smooth' });
     }
   });
+  function pedirAltura() {
+    quadro.contentWindow.postMessage({ almanaqueLSB: { solicitarAltura: true } }, origem);
+  }
+  quadro.addEventListener('load', pedirAltura);
+  window.addEventListener('resize', pedirAltura);
+  pedirAltura();
 })();
 </script>
