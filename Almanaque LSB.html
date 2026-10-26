@@ -216,7 +216,7 @@ footer.foot{font-size:12px;color:var(--muted);padding-block:0 28px}
   </div>
 </header>
 <div class="navbar" id="navbar" hidden>
-  <div class="wrap"><button class="btn small nav-back" id="backBtn" type="button" data-back disabled>← VOLTAR</button><nav class="tabs" id="tabs" role="tablist" aria-label="Seções"></nav></div>
+  <div class="wrap"><button class="btn small nav-back" id="backBtn" type="button" data-back hidden>← VOLTAR</button><nav class="tabs" id="tabs" role="tablist" aria-label="Seções"></nav></div>
 </div>
 <div class="wrap">
   <div id="banner"></div>
@@ -496,7 +496,7 @@ function renderFrame(){
   const opts=v=>ys.map(y=>`<option${y===v?' selected':''}>${y}</option>`).join('');
   $('#tFrom').innerHTML=opts(S.tFrom);$('#tTo').innerHTML=opts(S.tTo);
   $('#tabs').innerHTML=TABS.map(([k,n])=>`<button role="tab" aria-selected="${S.tab===k}" data-tab="${k}">${n}</button>`).join('');
-  $('#backBtn').disabled=!pageHistory.length;
+  $('#backBtn').hidden=!pageHistory.length;
   applyFilter();renderView();
 }
 function emptyHero(){return `<div class="empty">
