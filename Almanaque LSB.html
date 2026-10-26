@@ -57,8 +57,10 @@ h1,h2,h3{text-wrap:balance}
 
 /* Abas fixas */
 .navbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:8;background:var(--surface);border-bottom:1px solid var(--line)}
-nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+.navbar .wrap{display:flex;align-items:center;gap:8px}
+nav.tabs{display:flex;flex:1;min-width:0;gap:2px;overflow-x:auto;scrollbar-width:none}
 nav.tabs::-webkit-scrollbar{display:none}
+.nav-back{flex:none;white-space:nowrap}
 nav.tabs button{border:0;background:none;padding:13px 14px 11px;cursor:pointer;font:700 17px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;
   color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap}
 nav.tabs button:hover{color:var(--ink)}
@@ -214,7 +216,7 @@ footer.foot{font-size:12px;color:var(--muted);padding-block:0 28px}
   </div>
 </header>
 <div class="navbar" id="navbar" hidden>
-  <div class="wrap"><nav class="tabs" id="tabs" role="tablist" aria-label="Seções"></nav></div>
+  <div class="wrap"><button class="btn small nav-back" id="backBtn" type="button" data-back disabled>← VOLTAR</button><nav class="tabs" id="tabs" role="tablist" aria-label="Seções"></nav></div>
 </div>
 <div class="wrap">
   <div id="banner"></div>
@@ -440,7 +442,7 @@ const S={db:null,I:null,grp:'',cats:new Set(),tFrom:null,tTo:null,tab:'resumo',
   rank:{stat:'pts',mode:'total',scope:'carreira',minG:1,minA:0,q:'',limit:100},
   rec:{stat:'pts',limit:50},jg:{k:'maxTeam'},
   eq:{scope:'geral',sort:'v',limit:100},player:null,cmp:[null,null,null,null]};
-let FL=[],FG=[];
+let FL=[],FG=[],pageHistory=[],currentPage=null;
 
 /* ---------- armazenamento ---------- */
 function idb(){return new Promise((res,rej)=>{const r=indexedDB.open('almanaque-lsb',1);
@@ -494,6 +496,7 @@ function renderFrame(){
   const opts=v=>ys.map(y=>`<option${y===v?' selected':''}>${y}</option>`).join('');
   $('#tFrom').innerHTML=opts(S.tFrom);$('#tTo').innerHTML=opts(S.tTo);
   $('#tabs').innerHTML=TABS.map(([k,n])=>`<button role="tab" aria-selected="${S.tab===k}" data-tab="${k}">${n}</button>`).join('');
+  $('#backBtn').disabled=!pageHistory.length;
   applyFilter();renderView();
 }
 function emptyHero(){return `<div class="empty">
@@ -713,12 +716,25 @@ const EM_SITE=window.parent!==window;
 function avisarSite(extra){if(EM_SITE)try{parent.postMessage({almanaqueLSB:{altura:Math.max(document.documentElement.scrollHeight,document.body.scrollHeight),...extra}},'*');}catch(e){}}
 if(EM_SITE&&window.ResizeObserver)new ResizeObserver(()=>avisarSite()).observe(document.body);
 if(EM_SITE)window.addEventListener('message',e=>{if(e.data&&e.data.almanaqueLSB&&e.data.almanaqueLSB.solicitarAltura)avisarSite();});
-function go(tab){S.tab=tab;try{history.replaceState(null,'','#'+tab);}catch(e){}renderFrame();
+function go(tab,player=S.player){
+  if(!currentPage)currentPage={tab:S.tab,player:S.player};
+  const same=currentPage.tab===tab&&(tab!=='jogador'||currentPage.player===player);
+  if(!same)pageHistory.push(currentPage);
+  currentPage={tab,player};S.tab=tab;S.player=player;
+  try{history.replaceState(null,'','#'+tab);}catch(e){}renderFrame();
   const nb=$('#navbar');if(nb&&window.scrollY>nb.offsetTop)window.scrollTo({top:nb.offsetTop});
   avisarSite({topo:true});}
-function openPlayer(pk){S.player=pk;go('jogador');}
+function voltar(){
+  const previous=pageHistory.pop();if(!previous)return;
+  currentPage=previous;S.tab=previous.tab;S.player=previous.player;
+  try{history.replaceState(null,'','#'+previous.tab);}catch(e){}renderFrame();
+  const nb=$('#navbar');if(nb&&window.scrollY>nb.offsetTop)window.scrollTo({top:nb.offsetTop});
+  avisarSite({topo:true});
+}
+function openPlayer(pk){go('jogador',pk);}
 document.addEventListener('click',e=>{
   const t=e.target.closest('button,[data-cat],[data-set]');if(!t)return;
+  if(t.dataset.back!==undefined)return voltar();
   if(t.dataset.grp!==undefined){S.grp=t.dataset.grp;S.cats.clear();renderFrame();return;}
   if(t.dataset.cat!==undefined){const c=t.dataset.cat;if(!c)S.cats.clear();else S.cats.has(c)?S.cats.delete(c):S.cats.add(c);renderFrame();return;}
   if(t.dataset.tab)return go(t.dataset.tab);
