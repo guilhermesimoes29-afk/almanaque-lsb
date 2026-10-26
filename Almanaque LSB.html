@@ -174,7 +174,6 @@ td.pos{color:var(--muted);width:1%}
 .empty code{background:var(--night2);padding:1px 6px;border-radius:4px;color:var(--night-ink)}
 .toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);
   padding:10px 16px;border-radius:6px;font-size:14px;z-index:20;max-width:90vw}
-.edit-in{width:100%;min-width:180px}
 footer.foot{font-size:12px;color:var(--muted);padding-block:0 28px}
 
 @media (max-width:900px){
@@ -693,14 +692,16 @@ function vComparar(){
 }
 
 function vComps(){
-  const list=[...S.I.comps.values()].map(c=>({...c,t:[...S.I.games.values()].filter(g=>g.comp===c.id).length}))
-    .sort((a,b)=>(b.temporada||0)-(a.temporada||0)||catSort(a.categoria,b.categoria));
-  return `<p class="note">Se uma competição caiu na categoria ou temporada errada, corrija aqui para ver o efeito em todas as abas.
-   ${S.db.embutido?'A correção vale até recarregar a página. Para corrigir de vez, ajuste o arquivo competicoes_api.csv e gere os dados de novo.':'A mudança fica guardada neste navegador.'}</p>
-   <div class="tbl-wrap"><table><thead><tr><th class="opt">ID</th><th class="l">Nome na Genius</th><th class="l">Categoria</th><th class="l opt">Grupo</th><th>Temporada</th><th>Jogos</th></tr></thead><tbody>
-   ${list.map(c=>`<tr><td class="opt">${c.id}</td><td class="l">${esc(c.nome||'–')}</td><td class="l"><input class="edit-in" type="text" list="catlist" value="${esc(c.categoria)}" data-comp="${c.id}" data-f="categoria" aria-label="Categoria de ${esc(c.nome)}"></td>
-   <td class="l opt">${esc(grupo(c.categoria))}</td><td><input type="number" value="${c.temporada||''}" data-comp="${c.id}" data-f="temporada" aria-label="Temporada de ${esc(c.nome)}"></td><td>${c.t}</td></tr>`).join('')}</tbody></table></div>
-   <datalist id="catlist">${[...new Set([...CAT_ORDER,...S.I.cats])].map(c=>`<option value="${esc(c)}">`).join('')}</datalist>`;
+  const resumo=new Map();
+  for(const g of S.I.games.values()){
+    let a=resumo.get(g.comp);
+    if(!a){a={jogos:0,ano:null};resumo.set(g.comp,a);}
+    a.jogos++;if(!a.ano&&g.temp)a.ano=g.temp;
+  }
+  const list=[...S.I.comps.values()].map(c=>({nome:c.nome,ano:c.temporada||resumo.get(c.id)?.ano,jogos:resumo.get(c.id)?.jogos||0}))
+    .sort((a,b)=>(b.ano||0)-(a.ano||0)||(a.nome||'').localeCompare(b.nome||'','pt-BR'));
+  return `<div class="tbl-wrap"><table><thead><tr><th class="l">Competição</th><th>Ano</th><th>Jogos</th></tr></thead><tbody>
+   ${list.map(c=>`<tr><td class="l">${esc(c.nome||'–')}</td><td>${fmt(c.ano)}</td><td>${fmt(c.jogos)}</td></tr>`).join('')}</tbody></table></div>`;
 }
 
 /* ---------- eventos ---------- */
@@ -744,9 +745,6 @@ document.addEventListener('change',e=>{
   const t=e.target;
   if(t.dataset.bind&&t.tagName==='SELECT'){setPath(t.dataset.bind,t.value);renderView();return;}
   if(t.id==='tFrom'||t.id==='tTo'){S[t.id]=+t.value;if(S.tFrom>S.tTo)[S.tFrom,S.tTo]=[S.tTo,S.tFrom];renderFrame();return;}
-  if(t.dataset.comp){const c=S.db.competicoes.find(x=>+x.id===+t.dataset.comp);if(!c)return;
-    c[t.dataset.f]=t.dataset.f==='temporada'?(+t.value||null):(t.value.trim()||'Sem categoria');c.editado=true;
-    if(!S.db.embutido)dbPut(S.db);load(S.db);toast('Competição atualizada.');}
 });
 $('#file').addEventListener('change',async e=>{
   const files=[...e.target.files];if(!files.length)return;let db=S.db&&!S.db.embutido?S.db:null,n=0;
