@@ -123,6 +123,7 @@ td.pos{color:var(--muted);width:1%}
 .board-row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px}
 .bteam{font:700 clamp(18px,2.4vw,24px)/1.05 var(--display);text-transform:uppercase;letter-spacing:.03em}
 .bteam.r{text-align:right}
+.bteam small.hl{color:var(--orange);font-weight:600}
 .bteam small{display:block;font:400 12px/1.3 var(--body);color:var(--night-muted);text-transform:none;letter-spacing:0;margin-top:4px}
 .digits{display:flex;align-items:center;gap:8px;font:800 clamp(56px,9vw,96px)/.85 var(--display);font-variant-numeric:tabular-nums}
 .digits span{background:var(--night2);border:1px solid var(--night-line);border-radius:6px;padding:8px 12px 4px;min-width:2.2ch;text-align:center}
@@ -524,19 +525,81 @@ const teamsTxt=a=>{const t=[...a.teams];return t.slice(0,2).join(', ')+(t.length
 const gctx=g=>`${esc(g.cat)} ${g.temp||''}${g.data?' · '+fdate(g.data):''}`;
 function lineCtx(l){return `${esc(l.team)} x ${esc(l.opp)} <b>${l.tp}–${l.op}</b> · ${esc(l.cat)} ${l.temp||''}${l.game.data?' · '+fdate(l.game.data):''}`;}
 
+/* ---------- destaques do Resumo: recordes sorteados a cada visita ---------- */
+const placar=x=>`${esc(x.casa)} ${x.pc}–${x.pf} ${esc(x.fora)}`;
+const embaralha=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+function destaquesCtx(){
+  const memo={};const m=(k,f)=>k in memo?memo[k]:(memo[k]=f());
+  const ok=FG.filter(validGame);
+  const melhorJogo=(f,filt)=>{let b=null,bv=-Infinity;for(const g of ok){if(filt&&!filt(g))continue;const v=f(g);if(v>bv){bv=v;b=g;}}return b&&{g:b,v:bv};};
+  // estatística somada de cada equipe em cada jogo
+  const equipeJogo=k=>m('ej'+k,()=>{const t=new Map();
+    for(const L of FL){if(!L.played)continue;const c=L.g+'|'+L.team;let a=t.get(c);if(!a)t.set(c,a={game:L.game,team:L.team,v:0});a.v+=L[k];}
+    let b=null;for(const a of t.values())if(!b||a.v>b.v)b=a;return b&&b.v>0?b:null;});
+  const lider=(stat,o={})=>{const r=rankPlayers(FL,{stat,mode:'total',scope:'carreira',minG:1,...o})[0];return r||null;};
+  const equipes=()=>m('eq',()=>teamTable(FG,[],'geral'));
+  const sequencia=()=>m('seq',()=>{const by=new Map();
+    for(const g of [...ok].filter(g=>g.data).sort((a,b)=>a.data.localeCompare(b.data)||a.id-b.id))
+      for(const [t,p,o] of [[g.casa,g.pc,g.pf],[g.fora,g.pf,g.pc]]){const k=norm(t)+'|'+g.cat;let s=by.get(k);
+        if(!s)by.set(k,s={team:t,cat:g.cat,cur:0,ini:null,best:0,de:null,ate:null});
+        if(p>o){if(!s.cur)s.ini=g;s.cur++;if(s.cur>s.best){s.best=s.cur;s.de=s.ini;s.ate=g;}}else s.cur=0;}
+    let b=null;for(const s of by.values())if(!b||s.best>b.best)b=s;return b&&b.best>1?b:null;});
+  return {ok,melhorJogo,equipeJogo,lider,equipes,sequencia};
+}
+// placar grande: recordes de uma partida (k, título, função que devolve {g, v, lado?, txt?})
+const DESTAQUE_PLACAR=[
+ ['maxTeam','Maior pontuação de uma equipe',C=>C.melhorJogo(g=>Math.max(g.pc,g.pf))],
+ ['sum','Maior soma de pontos num jogo',C=>C.melhorJogo(g=>g.pc+g.pf)],
+ ['diff','Maior diferença no placar',C=>C.melhorJogo(g=>Math.abs(g.pc-g.pf))],
+ ['loser','Maior pontuação de uma equipe derrotada',C=>C.melhorJogo(g=>Math.min(g.pc,g.pf),g=>g.pc!==g.pf)],
+ ['close','Maior placar decidido por até 2 pontos',C=>C.melhorJogo(g=>g.pc+g.pf,g=>g.pc!==g.pf&&Math.abs(g.pc-g.pf)<=2)],
+ ['tie','Maior placar de um empate',C=>C.melhorJogo(g=>g.pc+g.pf,g=>g.pc===g.pf)],
+ ...[['p3m','bolas de 3'],['reb','rebotes'],['ast','assistências'],['stl','recuperações'],['blk','tocos']].map(([k,n])=>
+  ['eq'+k,`Mais ${n} de uma equipe num jogo`,C=>{const b=C.equipeJogo(k);return b&&{g:b.game,v:b.v,lado:norm(b.team)===norm(b.game.casa)?'casa':'fora',txt:`${fmt(b.v)} ${n}`,l:`${n} de uma equipe num jogo`};}])
+];
+// quadros: qualquer recorde (k, grupo, função que devolve {n, l, w, c})
+const DESTAQUE_QUADRO=[
+ ...DESTAQUE_PLACAR.map(([k,t,f])=>[k,'partida',C=>{const r=f(C);if(!r)return null;const g=r.g;
+   return r.txt?{n:fmt(r.v),l:r.l,w:esc(r.lado==='casa'?g.casa:g.fora),c:placar(g)+' · '+gctx(g)}
+     :{n:r.v,l:{maxTeam:'pontos de uma equipe num jogo',sum:'pontos somados num jogo',diff:'pontos de diferença',loser:'pontos de uma equipe derrotada',close:'pontos somados num jogo decidido por até 2',tie:'pontos somados num empate'}[k],w:placar(g),c:gctx(g)};}]),
+ ...[['pts','pontos'],['reb','rebotes'],['ast','assistências'],['stl','recuperações de bola'],['blk','tocos'],['p3m','bolas de 3'],['ftm','lances livres convertidos'],['eff','de eficiência']].map(([k,n])=>
+  ['ind'+k,'atuacao',()=>{const L=topLines(FL,k,1)[0];return L&&{n:L[k],l:`${n} de um jogador num jogo`,w:plBtn(L.pk),c:lineCtx(L)};}]),
+ ...[['pts','pontos'],['reb','rebotes'],['ast','assistências'],['stl','recuperações de bola'],['blk','tocos'],['p3m','bolas de 3'],['ftm','lances livres convertidos'],['g','jogos disputados'],['dd','duplos-duplos'],['td','triplos-duplos']].map(([k,n])=>
+  ['car'+k,'carreira',C=>{const a=C.lider(k);return a&&{n:fmt(a.v),l:`${n} na carreira · líder da história`,w:plBtn(a.pk),c:`${esc(teamsTxt(a))} · ${fmt(a.g)} jogos`};}]),
+ ...[['pts','pontos'],['reb','rebotes'],['ast','assistências']].map(([k,n])=>
+  ['med'+k,'carreira',C=>{const a=C.lider(k,{mode:'media',minG:30});return a&&{n:fmt(a.v,1),l:`${n} por jogo · melhor média (mín. 30 jogos)`,w:plBtn(a.pk),c:`${esc(teamsTxt(a))} · ${fmt(a.g)} jogos`};}]),
+ ...[['pts','pontos'],['reb','rebotes'],['ast','assistências'],['p3m','bolas de 3']].map(([k,n])=>
+  ['tmp'+k,'carreira',C=>{const a=C.lider(k,{scope:'temporada'});return a&&{n:fmt(a.v),l:`${n} numa só temporada`,w:plBtn(a.pk),c:`${esc(a.cat)} ${a.temp||''} · ${esc(teamsTxt(a))} · ${fmt(a.g)} jogos`};}]),
+ ['temps','carreira',()=>{let b=null;for(const a of aggregate(FL,L=>L.pk))if(!b||a.temps.size>b.temps.size||(a.temps.size===b.temps.size&&a.g>b.g))b=a;
+   if(!b||b.temps.size<2)return null;const t=[...b.temps].sort();return {n:t.length,l:'temporadas disputadas por um jogador',w:plBtn(b.pk),c:`${t[0]}–${t[t.length-1]} · ${fmt(b.g)} jogos`};}],
+ ['eqv','equipe',C=>{const a=[...C.equipes()].sort((x,y)=>y.v-x.v||x.d-y.d)[0];return a&&a.v&&{n:fmt(a.v),l:'vitórias · equipe mais vitoriosa',w:esc(a.name),c:`${fmt(a.j)} jogos · ${fmt(a.v/a.j*100,0)}% de aproveitamento`};}],
+ ['eqa','equipe',C=>{const a=C.equipes().filter(x=>x.j>=30).sort((x,y)=>y.v/y.j-x.v/x.j||y.j-x.j)[0];return a&&{n:fmt(a.v/a.j*100,0)+'%',l:'de aproveitamento · melhor da história (mín. 30 jogos)',w:esc(a.name),c:`${fmt(a.v)} vitórias em ${fmt(a.j)} jogos`};}],
+ ['eqj','equipe',C=>{const a=[...C.equipes()].sort((x,y)=>y.j-x.j)[0];return a&&{n:fmt(a.j),l:'jogos · equipe com mais partidas',w:esc(a.name),c:`${fmt(a.v)} vitórias · ${[...a.cats].length} categorias`};}],
+ ['eqp','equipe',C=>{const a=[...C.equipes()].sort((x,y)=>y.pf-x.pf)[0];return a&&{n:fmt(a.pf),l:'pontos marcados · equipe mais pontuadora',w:esc(a.name),c:`${fmt(a.j)} jogos · ${fmt(a.pf/a.j,1)} por jogo`};}],
+ ['seq','equipe',C=>{const s=C.sequencia();return s&&{n:s.best,l:'vitórias seguidas · maior sequência',w:esc(s.team),c:`${esc(s.cat)} · de ${fdate(s.de.data)} a ${fdate(s.ate.data)}`};}]
+];
+let DQ=null;// ordem sorteada nesta visita; vale até recarregar a página
+function sorteiaDestaques(){
+  if(!DQ)DQ={placar:embaralha([...DESTAQUE_PLACAR]),quadro:embaralha([...DESTAQUE_QUADRO])};
+  const C=destaquesCtx();let pl=null;
+  for(const [k,t,f] of DQ.placar){const r=f(C);if(r){pl={k,t,...r};break;}}
+  const usados=new Set(pl?[pl.k]:[]),grupos=new Set(),qd=[];
+  for(const passo of [1,2])for(const [k,gr,f] of DQ.quadro){
+    if(qd.length>=3)break;if(usados.has(k)||(passo===1&&grupos.has(gr)))continue;
+    const r=f(C);usados.add(k);if(r){grupos.add(gr);qd.push(r);}}
+  return {pl,qd};
+}
+
 function vResumo(){
   if(!FG.some(validGame))return '<p>Nenhum jogo nesse filtro.</p>';
-  const top=gameRecords(FG,'maxTeam',1)[0],sum=gameRecords(FG,'sum',1)[0],dif=gameRecords(FG,'diff',1)[0],ind=topLines(FL,'pts',1)[0];
-  const g=top.g;
+  const {pl,qd}=sorteiaDestaques(),g=pl.g;
   const tile=(n,l,w,c)=>`<div class="tile"><div class="tile-n">${n}</div><div class="tile-l">${l}</div><div class="tile-w">${w}</div><div class="tile-c">${c}</div></div>`;
-  const placar=x=>`${esc(x.casa)} ${x.pc}–${x.pf} ${esc(x.fora)}`;
-  const board=`<div class="board"><div class="board-cap"><span><b>Maior pontuação de uma equipe</b></span><span>${gctx(g)}</span></div>
-    <div class="board-row"><div class="bteam">${esc(g.casa)}<small>mandante</small></div>
+  const sub=lado=>pl.lado===lado?`<small class="hl">${esc(pl.txt)}</small>`:`<small>${lado==='casa'?'mandante':'visitante'}</small>`;
+  const board=`<div class="board"><div class="board-cap"><span><b>${esc(pl.t)}</b></span><span>${gctx(g)}</span></div>
+    <div class="board-row"><div class="bteam">${esc(g.casa)}${sub('casa')}</div>
     <div class="digits"><span class="${g.pc>=g.pf?'w':''}">${g.pc}</span><i>×</i><span class="${g.pf>g.pc?'w':''}">${g.pf}</span></div>
-    <div class="bteam r">${esc(g.fora)}<small>visitante</small></div></div></div>`;
-  const tiles=`<div class="tiles">${tile(sum.g.pc+sum.g.pf,'pontos somados num jogo',placar(sum.g),gctx(sum.g))}
-    ${tile(Math.abs(dif.g.pc-dif.g.pf),'pontos de diferença',placar(dif.g),gctx(dif.g))}
-    ${ind?tile(ind.pts,'pontos de um jogador num jogo',plBtn(ind.pk),lineCtx(ind)):''}</div>`;
+    <div class="bteam r">${esc(g.fora)}${sub('fora')}</div></div></div>`;
+  const tiles=`<div class="tiles">${qd.map(r=>tile(r.n,r.l,r.w,r.c)).join('')}</div>`;
   const leaders=['pts','reb','ast','stl','blk','p3m'].map(k=>{
     const rows=rankPlayers(FL,{stat:k,mode:'total',scope:'carreira',minG:1}).slice(0,5);
     return `<section class="lead"><header><h3>${esc(STAT[k].c||STAT[k].n)}</h3><span>total</span></header>

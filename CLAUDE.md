@@ -38,6 +38,8 @@ Amador Masculino/Feminino, Master 35, Master 40…) e temporada. Responda ao usu
   `logo_lsb_icone.png` (ícone da aba). `publicar.py` embute as duas em data URI nas duas versões.
 - Abas: Resumo (padrão), Rankings, Recordes por jogo, Placares, Equipes, Jogador, Comparar, Competições.
 - Filtro por grupos (Adulto, Master, Base, Copas e outras — função `grupo()`), depois categorias do grupo.
+- Resumo: o placar grande e os 3 quadros ao lado sorteiam recordes a cada visita (`DESTAQUE_PLACAR`,
+  `DESTAQUE_QUADRO`, `sorteiaDestaques()`); os quadros preferem grupos diferentes (partida, atuação, carreira, equipe).
 - Celular: colunas com classe `opt` somem abaixo de 640px.
 - Versão anterior guardada em `versoes/`. Dados embutidos são compactados (`dic` de nomes) por `publicar.py`.
 
